@@ -29,18 +29,22 @@ Point a question at a table with at least two columns: one integer for the hour 
 
 | Setting | Description |
 |---|---|
-| **Clock mode** | `24 hours` — 24 segments (0 h to 23 h). `12 hours` — 12 segments; values for hour h and h+12 are summed per slot. Default: `24 hours`. |
+| **Start hour (top)** | Which hour appears at the top of the clock (12 o'clock position). Default: `0` (midnight). |
+| **Center label** | Text displayed in the center of the clock. Defaults to the value column display name. Clear to hide. |
+| **Show percentage in tooltip** | When enabled, the hover tooltip shows each arc's share of the total in addition to the raw value (e.g. `92 (18.4%)`). Default: off. |
 | **Clockwise** | Toggle the rotation direction of the hours. Default: on (clockwise). |
 | **Fill color** | Base color for all arc segments. Opacity scales with intensity — darker = higher value. Default: `#5F016F`. |
 
 ## Capabilities
 
-- 24 (or 12) arc segments arranged in a circle, one per hour
+- 24 arc segments arranged in a circle, one per hour
 - Arc length proportional to value; opacity encodes relative intensity
-- Hover tooltip: hour label + exact value, with 4 px color strip
+- Configurable start hour — any hour can be placed at the top
+- Center label: auto-named from the value column, supports multi-line word wrap
+- Hover tooltip: hour label + exact value + optional percentage of total
 - Animated entry (ease-out cubic, 550 ms); respects `prefers-reduced-motion`
 - Smooth dimming of non-hovered segments (150 ms transition)
-- Responsive: adapts to any container size
+- Responsive: fills the full card, adapts to any container size
 - Dark mode support
 
 ## Data requirements
