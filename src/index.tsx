@@ -67,20 +67,20 @@ const createVisualization: CreateCustomVisualization<Settings> = ({ defineSettin
         },
       }),
 
-      clockMode: ds({
-        id: "clockMode",
-        title: "Clock mode",
-        widget: "select",
+      startHour: ds({
+        id: "startHour",
+        title: "Start hour (top)",
+        widget: "number",
         getSection() { return "Appearance"; },
-        getDefault() { return "24h"; },
-        getProps() {
-          return {
-            options: [
-              { name: "24 hours", value: "24h" },
-              { name: "12 hours", value: "12h" },
-            ],
-          };
-        },
+        getDefault() { return 0; },
+      }),
+
+      centerLabel: ds({
+        id: "centerLabel",
+        title: "Center label",
+        widget: "input",
+        getSection() { return "Appearance"; },
+        getDefault() { return ""; },
       }),
 
       clockwise: defineSetting({

@@ -4,6 +4,7 @@ import type { Settings } from "./types";
 import { hexToRgb } from "./utils";
 
 const TAU = 2 * Math.PI;
+const SLOTS = 24;
 
 type ColDef = { name: string; display_name?: string; base_type?: string; effective_type?: string };
 
@@ -35,11 +36,12 @@ export function RadialClock({
   const cols = (series?.[0]?.data?.cols ?? []) as ColDef[];
   const rows = (series?.[0]?.data?.rows ?? []) as unknown[][];
 
-  const hourColName       = settings.hourColumn  ?? "";
-  const valueColName      = settings.valueColumn ?? "";
-  const clockMode         = settings.clockMode   ?? "24h";
-  const clockwiseSetting  = settings.clockwise !== false;
-  const fillColor         = settings.fillColor   ?? "#5F016F";
+  const hourColName      = settings.hourColumn  ?? "";
+  const valueColName     = settings.valueColumn ?? "";
+  const startHour        = Math.max(0, Math.min(23, Math.floor(settings.startHour ?? 0)));
+  const clockwiseSetting = settings.clockwise !== false;
+  const fillColor        = settings.fillColor   ?? "#5F016F";
+  const centerLabel      = settings.centerLabel ?? "";
 
   const isDark    = colorScheme === "dark";
   const textColor = isDark ? "#aaa" : "#666";
@@ -48,31 +50,28 @@ export function RadialClock({
   const hIdx = cols.findIndex(c => c.name === hourColName);
   const vIdx = cols.findIndex(c => c.name === valueColName);
 
-  const slots = clockMode === "24h" ? 24 : 12;
-
   const hourValues = useMemo(() => {
-    const vals = Array<number>(slots).fill(0);
+    const vals = Array<number>(SLOTS).fill(0);
     if (hIdx < 0 || vIdx < 0) return vals;
     for (const row of rows) {
       if (row[hIdx] === null || row[vIdx] === null) continue;
       const h = Number(row[hIdx]);
       const v = Number(row[vIdx]);
       if (!isFinite(h) || !isFinite(v) || h < 0 || v < 0) continue;
-      const slot = Math.floor(h) % slots;
-      vals[slot] += v;
+      vals[Math.floor(h) % SLOTS] += v;
     }
     return vals;
-  }, [rows, hIdx, vIdx, slots]);
+  }, [rows, hIdx, vIdx]);
 
   const maxVal = useMemo(() => Math.max(...hourValues, 1), [hourValues]);
 
-  const PAD       = 30;
-  const available = Math.min(Math.max(cw - 2 * PAD, 1), Math.max(ch - 2 * PAD, 1));
-  const R         = available / 2;
-  const cx        = cw / 2;
-  const cy        = ch / 2;
-  const rIn       = R * 0.32;
-  const rMax      = R * 0.90;
+  // Fill the card — R is the full half-dimension, rMax leaves room for labels
+  const R    = Math.min(cw, ch) / 2;
+  const cx   = cw / 2;
+  const cy   = ch / 2;
+  const rIn  = R * 0.28;
+  const rMax = R * 0.82;
+  const labelR = rMax + Math.max(10, R * 0.1);
 
   const prefersReduced = useMemo(
     () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
@@ -94,45 +93,37 @@ export function RadialClock({
     }
     rafRef.current = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(rafRef.current); };
-  }, [prefersReduced, maxVal, slots]);
+  }, [prefersReduced, maxVal]);
 
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
 
   const dir  = clockwiseSetting ? 1 : -1;
-  const step = TAU / slots;
+  const step = TAU / SLOTS;
   const GAP  = 0.018;
 
+  // Each hour is placed at an angular position offset by startHour
+  // Hour `startHour` appears at the top (−π/2)
   const segments = useMemo(() =>
-    Array.from({ length: slots }, (_, slot) => {
-      const ratio = hourValues[slot] / maxVal;
-      const a0    = -Math.PI / 2 + dir * slot * step + dir * GAP;
-      const a1    = -Math.PI / 2 + dir * (slot + 1) * step - dir * GAP;
-      const midA  = -Math.PI / 2 + dir * (slot + 0.5) * step;
-      return { slot, ratio, a0, a1, midA, value: hourValues[slot] };
+    Array.from({ length: SLOTS }, (_, hour) => {
+      const pos   = (hour - startHour + SLOTS) % SLOTS; // angular position (0 = top)
+      const ratio = hourValues[hour] / maxVal;
+      const a0    = -Math.PI / 2 + dir * pos * step + dir * GAP;
+      const a1    = -Math.PI / 2 + dir * (pos + 1) * step - dir * GAP;
+      const midA  = -Math.PI / 2 + dir * (pos + 0.5) * step;
+      return { hour, ratio, a0, a1, midA, value: hourValues[hour] };
     }),
-  [hourValues, maxVal, slots, dir, step]);
+  [hourValues, maxVal, startHour, dir, step]);
 
   const [fr, fg, fb] = hexToRgb(fillColor);
-
-  const valueDisplayName = cols[vIdx]?.display_name ?? cols[vIdx]?.name ?? "";
-  const truncName = valueDisplayName.length > 10
-    ? valueDisplayName.slice(0, 10) + "…"
-    : valueDisplayName;
-
-  const fontSize = Math.max(9, Math.min(11, R * 0.13));
+  const fontSize = Math.max(9, Math.min(11, R * 0.12));
 
   const tooltip = (() => {
     if (hoveredSlot === null) return null;
     const seg = segments[hoveredSlot];
     if (!seg) return null;
-    const tooltipR = rMax + 22;
-    const x = cx + tooltipR * Math.cos(seg.midA);
-    const y = cy + tooltipR * Math.sin(seg.midA);
-    const label =
-      clockMode === "24h"
-        ? `${hoveredSlot}h`
-        : hoveredSlot === 0 ? "12" : String(hoveredSlot);
-    return { x, y, label, value: seg.value };
+    const x = cx + (labelR + 4) * Math.cos(seg.midA);
+    const y = cy + (labelR + 4) * Math.sin(seg.midA);
+    return { x, y, label: `${hoveredSlot}h`, value: seg.value };
   })();
 
   if (!cw || !ch) return null;
@@ -145,17 +136,17 @@ export function RadialClock({
         <circle cx={cx} cy={cy} r={rIn} fill="none" stroke={gridColor} strokeWidth={1} />
 
         {/* Arc segments */}
-        {segments.map(({ slot, ratio, a0, a1 }) => {
+        {segments.map(({ hour, ratio, a0, a1 }) => {
           const animatedROuter = rIn + ratio * progress * (rMax - rIn);
           if (animatedROuter <= rIn + 1) return null;
 
           const fillOpacity = 0.15 + 0.85 * ratio;
-          const dimmed = hoveredSlot !== null && hoveredSlot !== slot;
+          const dimmed = hoveredSlot !== null && hoveredSlot !== hour;
           const d = arcPath(cx, cy, animatedROuter, rIn, a0, a1);
 
           return (
             <path
-              key={slot}
+              key={hour}
               d={d}
               fill={`rgba(${fr},${fg},${fb},${fillOpacity})`}
               style={{
@@ -163,24 +154,20 @@ export function RadialClock({
                 transition: "opacity 0.15s",
                 cursor: "pointer",
               }}
-              onMouseEnter={() => setHoveredSlot(slot)}
+              onMouseEnter={() => setHoveredSlot(hour)}
               onMouseLeave={() => setHoveredSlot(null)}
             />
           );
         })}
 
-        {/* Hour labels every 3 slots */}
-        {segments.map(({ slot, midA }) => {
-          if (slot % 3 !== 0) return null;
-          const lx = cx + (rMax + 14) * Math.cos(midA);
-          const ly = cy + (rMax + 14) * Math.sin(midA);
-          const label =
-            clockMode === "24h"
-              ? `${slot}h`
-              : slot === 0 ? "12" : String(slot);
+        {/* Hour labels every 3h */}
+        {segments.map(({ hour, midA }) => {
+          if (hour % 3 !== 0) return null;
+          const lx = cx + labelR * Math.cos(midA);
+          const ly = cy + labelR * Math.sin(midA);
           return (
             <text
-              key={`lbl-${slot}`}
+              key={`lbl-${hour}`}
               x={lx} y={ly}
               textAnchor="middle"
               dominantBaseline="central"
@@ -188,36 +175,24 @@ export function RadialClock({
               fill={textColor}
               style={{ userSelect: "none", pointerEvents: "none" }}
             >
-              {label}
+              {hour}h
             </text>
           );
         })}
 
-        {/* Center label */}
-        {truncName && (
-          <>
-            <text
-              x={cx} y={cy - Math.max(6, R * 0.07)}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={Math.max(9, Math.min(12, R * 0.15))}
-              fontWeight={600}
-              fill={textColor}
-              style={{ userSelect: "none" }}
-            >
-              {truncName}
-            </text>
-            <text
-              x={cx} y={cy + Math.max(6, R * 0.09)}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={Math.max(8, Math.min(10, R * 0.11))}
-              fill={textColor}
-              style={{ userSelect: "none" }}
-            >
-              {clockMode}
-            </text>
-          </>
+        {/* Center label — single line, user-defined */}
+        {centerLabel && (
+          <text
+            x={cx} y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={Math.max(9, Math.min(13, R * 0.16))}
+            fontWeight={600}
+            fill={textColor}
+            style={{ userSelect: "none" }}
+          >
+            {centerLabel.length > 12 ? centerLabel.slice(0, 12) + "…" : centerLabel}
+          </text>
         )}
       </svg>
 

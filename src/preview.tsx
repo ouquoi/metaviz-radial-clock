@@ -22,7 +22,7 @@ function App() {
       <h2 style={{ marginBottom: 16 }}>Radial Clock — Preview</h2>
       <RadialClock
         series={series as any}
-        settings={{ hourColumn: "hour", valueColumn: "occupancy", clockMode: "24h", clockwise: true, fillColor: "#5F016F" }}
+        settings={{ hourColumn: "hour", valueColumn: "occupancy", startHour: 0, centerLabel: "Occupancy", clockwise: true, fillColor: "#5F016F" }}
         width={400}
         height={400}
         colorScheme="light"
