@@ -42,6 +42,7 @@ export function RadialClock({
   const clockwiseSetting = settings.clockwise !== false;
   const fillColor        = settings.fillColor   ?? "#5F016F";
   const centerLabel      = settings.centerLabel ?? "";
+  const showPercent      = settings.showPercent ?? false;
 
   const isDark    = colorScheme === "dark";
   const textColor = isDark ? "#aaa" : "#666";
@@ -63,7 +64,8 @@ export function RadialClock({
     return vals;
   }, [rows, hIdx, vIdx]);
 
-  const maxVal = useMemo(() => Math.max(...hourValues, 1), [hourValues]);
+  const maxVal   = useMemo(() => Math.max(...hourValues, 1), [hourValues]);
+  const totalVal = useMemo(() => hourValues.reduce((a, b) => a + b, 0) || 1, [hourValues]);
 
   // Fill the card — R is the full half-dimension, rMax leaves room for labels
   const R    = Math.min(cw, ch) / 2;
@@ -123,7 +125,8 @@ export function RadialClock({
     if (!seg) return null;
     const x = cx + (labelR + 4) * Math.cos(seg.midA);
     const y = cy + (labelR + 4) * Math.sin(seg.midA);
-    return { x, y, label: `${hoveredSlot}h`, value: seg.value };
+    const pct = (seg.value / totalVal) * 100;
+    return { x, y, label: `${hoveredSlot}h`, value: seg.value, pct };
   })();
 
   if (!cw || !ch) return null;
@@ -246,9 +249,12 @@ export function RadialClock({
         >
           <div style={{ fontWeight: 700, fontSize: 13 }}>{tooltip.label}</div>
           <div style={{ opacity: 0.7 }}>
-            {Number.isInteger(tooltip.value)
-              ? tooltip.value
-              : tooltip.value.toFixed(2)}
+            {Number.isInteger(tooltip.value) ? tooltip.value : tooltip.value.toFixed(2)}
+            {showPercent && (
+              <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                ({tooltip.pct < 0.1 ? "<0.1" : tooltip.pct.toFixed(1)}%)
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -5,4 +5,5 @@ export type Settings = {
   clockwise?: boolean;
   fillColor?: string;
   centerLabel?: string;
+  showPercent?: boolean;
 };

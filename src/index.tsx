@@ -90,6 +90,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({ defineSettin
         },
       }),
 
+      showPercent: defineSetting({
+        id: "showPercent",
+        title: "Show percentage in tooltip",
+        widget: "toggle",
+        getSection() { return "Appearance"; },
+        getDefault() { return false; },
+      }),
+
       clockwise: defineSetting({
         id: "clockwise",
         title: "Clockwise",
