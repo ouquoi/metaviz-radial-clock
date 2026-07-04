@@ -180,20 +180,48 @@ export function RadialClock({
           );
         })}
 
-        {/* Center label — single line, user-defined */}
-        {centerLabel && (
-          <text
-            x={cx} y={cy}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={Math.max(9, Math.min(13, R * 0.16))}
-            fontWeight={600}
-            fill={textColor}
-            style={{ userSelect: "none" }}
-          >
-            {centerLabel.length > 12 ? centerLabel.slice(0, 12) + "…" : centerLabel}
-          </text>
-        )}
+        {/* Center label — word-wrapped to fit inner circle */}
+        {centerLabel && (() => {
+          const fs = Math.max(9, Math.min(13, rIn * 0.55));
+          const maxW = rIn * 1.65;
+          const charsPerLine = Math.max(3, Math.floor(maxW / (fs * 0.58)));
+          const maxLines = Math.max(1, Math.floor((rIn * 1.65) / (fs * 1.35)));
+          const words = centerLabel.split(/\s+/).filter(Boolean);
+          const lines: string[] = [];
+          let cur = "";
+          for (const word of words) {
+            const test = cur ? `${cur} ${word}` : word;
+            if (test.length <= charsPerLine) {
+              cur = test;
+            } else {
+              if (cur) lines.push(cur);
+              cur = word.length > charsPerLine ? word.slice(0, charsPerLine - 1) + "…" : word;
+            }
+          }
+          if (cur) lines.push(cur);
+          const capped = lines.slice(0, maxLines);
+          if (lines.length > maxLines && capped[maxLines - 1]) {
+            const last = capped[maxLines - 1];
+            capped[maxLines - 1] = last.length > 2 ? last.slice(0, -2) + "…" : last;
+          }
+          const lh = fs * 1.35;
+          const totalH = capped.length * lh;
+          return capped.map((line, i) => (
+            <text
+              key={`cl-${i}`}
+              x={cx}
+              y={cy - totalH / 2 + i * lh + lh / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={fs}
+              fontWeight={600}
+              fill={textColor}
+              style={{ userSelect: "none" }}
+            >
+              {line}
+            </text>
+          ));
+        })()}
       </svg>
 
       {/* Tooltip */}

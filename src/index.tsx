@@ -80,7 +80,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({ defineSettin
         title: "Center label",
         widget: "input",
         getSection() { return "Appearance"; },
-        getDefault() { return ""; },
+        getDefault(series: any) {
+          const cols = (series?.[0]?.data?.cols ?? []) as any[];
+          const numeric = cols.filter((c: any) => isNumericCol(c));
+          const valueCol =
+            numeric.find((c: any) => !isIntegerCol(c)) ??
+            numeric[1] ?? numeric[0] ?? cols[1] ?? cols[0];
+          return valueCol?.display_name ?? valueCol?.name ?? "";
+        },
       }),
 
       clockwise: defineSetting({
